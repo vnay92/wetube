@@ -1,126 +1,34 @@
-var fs = require('fs');
-var http = require('http');
-var url = require('url');
-var path = require('path');
+var express = require('express');
+var ffmpeg = require('fluent-ffmpeg');
 
-var indexPage, movie_webm, movie_mp4, movie_ogg, gnr_mp4;
+var app = express();
 
-// load the video files and the index html page
+app.use(express.static(__dirname + '/static'));
 
-fs.readFile(path.resolve(__dirname, "movie.webm"), function(err, data) {
-    if (err) {
-        throw err;
-    }
-    movie_webm = data;
+app.get('/', function(req, res) {
+    res.send('index.html');
 });
 
-fs.readFile(path.resolve(__dirname, "movie.mp4"), function(err, data) {
-    if (err) {
-        throw err;
-    }
-    movie_mp4 = data;
-});
-
-fs.readFile(path.resolve(__dirname, "gnr.mp4"), function(err, data) {
-    if (err) {
-        throw err;
-    }
-    gnr_mp4 = data;
-});
-
-fs.readFile(path.resolve(__dirname, "movie.ogg"), function(err, data) {
-    if (err) {
-        throw err;
-    }
-    movie_ogg = data;
-});
-
-
-fs.readFile(path.resolve(__dirname, "index.html"), function(err, data) {
-    if (err) {
-        throw err;
-    }
-    indexPage = data;
-});
-
-// create http server
-http.createServer(function(req, res) {
-
-    var reqResource = url.parse(req.url).pathname;
-    console.log("Resource: " + req);
-
-    if (reqResource == "/") {
-
-        //console.log(req.headers)
-        res.writeHead(200, {
-            'Content-Type': 'text/html'
+app.get('/video/:filename', function(req, res) {
+    res.contentType('mp4');
+    // make sure you set the correct path to your video file storage
+    var pathToMovie = '/home/vinay/Videos/' + req.params.filename;
+    var proc = ffmpeg(pathToMovie)
+        // use the 'flashvideo' preset (located in /lib/presets/flashvideo.js)
+        .preset('flashvideo')
+        // setup event handlers
+        .on('end', function() {
+            console.log('file has been converted succesfully');
+        })
+        .on('error', function(err) {
+            console.log('an error happened: ' + err.message);
+        })
+        // save to stream
+        .pipe(res, {
+            end: true
         });
-        res.write(indexPage);
-        res.end();
+});
 
-    } else if (reqResource == "/favicon.ico") {
-
-        res.writeHead(404);
-        res.end();
-
-    } else {
-
-        var total;
-        if (reqResource == "/movie.mp4") {
-            total = movie_mp4.length;
-        } else if (reqResource == "/movie.ogg") {
-            total = movie_ogg.length;
-        } else if (reqResource == "/movie.webm") {
-            total = movie_webm.length;
-        } else if (reqResource == "/gnr.mp4") {
-            total = gnr_mp4.length;
-        }
-
-        console.log(req.headers.range);
-        var range = req.headers.range;
-
-        var positions = range.replace(/bytes=/, "").split("-");
-        var start = parseInt(positions[0], 10);
-        // if last byte position is not present then it is the last byte of the video file.
-        var end = positions[1] ? parseInt(positions[1], 10) : total - 1;
-        var chunksize = (end - start) + 1;
-
-        if (reqResource == "/movie.mp4") {
-            res.writeHead(206, {
-                "Content-Range": "bytes " + start + "-" + end + "/" + total,
-                "Accept-Ranges": "bytes",
-                "Content-Length": chunksize,
-                "Content-Type": "video/mp4"
-            });
-            res.end(movie_mp4.slice(start, end + 1), "binary");
-
-        } else if (reqResource == "/gnr.mp4") {
-            console.log('here');
-            res.writeHead(206, {
-                "Content-Range": "bytes " + start + "-" + end + "/" + total,
-                "Accept-Ranges": "bytes",
-                "Content-Length": chunksize,
-                "Content-Type": "video/mp4"
-            });
-            res.end(gnr_mp4.slice(start, end + 1), "binary");
-
-        } else if (reqResource == "/movie.ogg") {
-            res.writeHead(206, {
-                "Content-Range": "bytes " + start + "-" + end + "/" + total,
-                "Accept-Ranges": "bytes",
-                "Content-Length": chunksize,
-                "Content-Type": "video/ogg"
-            });
-            res.end(movie_ogg.slice(start, end + 1), "binary");
-
-        } else if (reqResource == "/movie.webm") {
-            res.writeHead(206, {
-                "Content-Range": "bytes " + start + "-" + end + "/" + total,
-                "Accept-Ranges": "bytes",
-                "Content-Length": chunksize,
-                "Content-Type": "video/webm"
-            });
-            res.end(movie_webm.slice(start, end + 1), "binary");
-        }
-    }
-}).listen(42069);
+app.listen(42069, function() {
+    console.log('App running on port 42069');
+});
