@@ -37,6 +37,7 @@
     var xhr = $.ajax(options);
     xhr.done(function(data) {
         if (data.status === 200) {
+            $(document).prop('title', data.name + ' - WeTube');
             $('#video_source').prop('src', window.location.origin + '/video/' + urlParams.file );
             $('#video_source').prop('type', 'video/mp4');
             plyr.setup();
