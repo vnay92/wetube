@@ -3,14 +3,46 @@
 <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <script type="text/javascript" src="https://cdn.plyr.io/1.8.12/plyr.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <link rel="stylesheet" href="https://cdn.plyr.io/1.8.12/plyr.css">
     <title>WeTube - The Home Fight Resolver</title>
 </head>
 
 <body>
     <video controls>
-        <source id = 'video_source' src="/video/asm.mp4" type="video/mp4">
+        <source id='video_source'>
     </video>
 </body>
-<script>plyr.setup();</script>
+<script type="text/javascript">
+    var urlParams;
+    (window.onpopstate = function() {
+        var match,
+            pl = /\+/g, // Regex for replacing addition symbol with a space
+            search = /([^&=]+)=?([^&]*)/g,
+            decode = function(s) {
+                return decodeURIComponent(s.replace(pl, " "));
+            },
+            query = window.location.search.substring(1);
+
+        urlParams = {};
+        while (match = search.exec(query))
+            urlParams[decode(match[1])] = decode(match[2]);
+    })();
+
+    var options = {
+        url: window.location.origin + '/find/' + urlParams.file,
+        type: 'GET'
+    };
+
+    var xhr = $.ajax(options);
+    xhr.done(function(data) {
+        if (data.status === 200) {
+            $('#video_source').prop('src', window.location.origin + '/video/' + urlParams.file );
+            $('#video_source').prop('type', 'video/mp4');
+            plyr.setup();
+        }
+    });
+
+</script>
+
 </html>
