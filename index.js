@@ -1,14 +1,16 @@
 var express = require('express');
 var app = express();
-var config = require('config.json');
+var config = require(__dirname + '/config.json');
 
 var BASE_DIR = config.BASE_DIR;
 
-app.use(express.static('/home/vinay/Videos'));
+app.use(express.static(__dirname + '/static'));
 
 app.get('/', function(req, res) {
     res.send('index.html');
 });
+
+var movies = express();
 
 app.get('/video/:filename', function(req, res) {
     res.contentType('mp4');
