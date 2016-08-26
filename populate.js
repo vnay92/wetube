@@ -16,15 +16,9 @@ if (argv.type === undefined) {
     process.exit(1);
 }
 
-var getDirectories = function(dir_path) {
-    return fs.readdirSync(dir_path).filter(function(file) {
-        return fs.statSync(path.join(dir_path, file)).isDirectory();
-    });
-};
-
 var getMediaFiles = function(directory_to_find_file, filter, callback) {
 
-    // console.log('Starting from dir ' + directory_to_find_file + '/');
+    console.log('Starting from dir ' + directory_to_find_file + '/');
 
     if (!fs.existsSync(directory_to_find_file)) {
         console.log("no dir ", directory_to_find_file);
@@ -47,9 +41,43 @@ var getMediaFiles = function(directory_to_find_file, filter, callback) {
     }
 };
 
+var pushToRedis = function (data) {
+
+    // push the file Hash for rendering
+    client.set(data.hash, data.file, function(err, result) {
+        if(err) {
+            console.log(err);
+            return;
+        }
+        console.log(result);
+    });
+
+    // Create the Directory Structure
+    client.get(data.directory, function (err, result) {
+        if(err) {
+            console.log(error);
+            return;
+        }
+        if(result === null) {
+            data_to_push = [data.file];
+        } else {
+            data_to_push = JSON.parse(result);
+            if(data_to_push.indexOf(data.file) == -1) {
+                data_to_push.push(data.file);
+            }
+        }
+
+        client.set(data.directory, JSON.stringify(data_to_push), function (err, response) {
+            console.log(response);
+        });
+    });
+};
+
 
 var init = function(BASE_DIR) {
     var dir = '';
+    // var files_regex = /\.mkv|\.mp4|\.avi/;
+    var files_regex = /\.mp4/;
     switch (argv.type) {
         case 'movies':
             console.log('Movies it is!');
@@ -60,13 +88,9 @@ var init = function(BASE_DIR) {
             return;
     }
 
-    // var entries = getDirectories(dir);
-    // for (var i = 0; i < entries.length; i++) {
-    //     folder = entries[i];
-    getMediaFiles(dir /*+ entries[i]*/ , /\.mkv|\.mp4|\.avi/, function(filename) {
-        console.log(filename);
+    getMediaFiles(dir, files_regex, function(file) {
+        pushToRedis(file);
     });
-    // }
 
 }(config.BASE_DIR);
 

@@ -2,6 +2,10 @@ var express = require('express');
 var app = express();
 var config = require(__dirname + '/config.json');
 
+// Redis
+var redis = require('redis');
+var client = redis.createClient();
+
 var BASE_DIR = config.BASE_DIR;
 
 app.use(express.static(__dirname + '/static'));
@@ -12,16 +16,22 @@ app.get('/', function(req, res) {
 
 var movies = express();
 
-app.get('/video/:filename', function(req, res) {
-    res.contentType('mp4');
+app.get('/video/:video_hash', function(req, res) {
     // make sure you set the correct path to your video file storage
-    var pathToMovie = BASE_DIR + req.params.filename;
-    res.sendFile(pathToMovie, function (err) {
+    client.get(req.params.video_hash, function (err, response) {
         if(err) {
-            console.log('Error Occured', err);
-        } else {
-            console.log('Sent!');
+            res.json({
+                status: 500,
+                message: err
+            });
+            res.end();
+            return;
         }
+
+        res.json({
+            status: 200,
+            path: response
+        });
     });
 });
 
